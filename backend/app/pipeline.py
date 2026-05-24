@@ -43,7 +43,7 @@ def run_pipeline(audio_path: str, language: str = "ru") -> dict:
 
     transcript_lines = []
     for u in utterances:
-        transcript_lines.append(f"{u['speaker']} | {u['start_ts']}-{u['end_ts']} | {u['text']}")
+        transcript_lines.append(f"Спикер {u['speaker']} | {u['start_ts']}-{u['end_ts']} | {u['text']}")
     transcript_text = "\n".join(transcript_lines)
 
     return {

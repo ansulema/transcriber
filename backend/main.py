@@ -83,6 +83,7 @@ async def transcribe_audio(file: UploadFile = File(...)):
 
     try:
         result = run_pipeline(str(save_path))
+        result["original_filename"] = file.filename or unique_name
         os.remove(save_path)
         return TranscribeResponse(**result)
     except Exception as e:
@@ -167,11 +168,14 @@ async def download_protocol(req: ProtocolRequest):
             outputfile=tmp_path,
         )
 
+        download_name = "report.docx"
+
+        print(f"[BACKEND] download_name={download_name}")
+
         return FileResponse(
             tmp_path,
             media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            filename="protocol.docx",
-            headers={"Content-Disposition": "attachment; filename=protocol.docx"},
+            filename=download_name,
         )
     except ImportError:
         # Если pypandoc не установлен — возвращаем текст

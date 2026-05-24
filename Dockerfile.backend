@@ -1,0 +1,42 @@
+FROM nvidia/cuda:12.8.1-runtime-ubuntu22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+ENV PIP_NO_CACHE_DIR=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.10 python3.10-venv python3-pip \
+    ffmpeg pandoc libpython3.10 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python3.10 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+RUN pip install --upgrade pip setuptools wheel
+
+RUN pip install \
+    torch==2.8.0 \
+    torchaudio==2.8.0 \
+    --index-url https://download.pytorch.org/whl/cu128
+
+RUN pip install torchcodec==0.7.*
+
+RUN pip install \
+    fastapi>=0.110.0 "uvicorn[standard]>=0.27.0" pydantic>=2.5.0 \
+    python-multipart>=0.0.9 \
+    requests>=2.31.0 python-dotenv>=1.0.0 \
+    faster-whisper>=1.0.0 numpy>=1.24.0 av>=10.0.0 \
+    pyannote-audio>=3.1.0 openai>=1.0.0 tiktoken>=0.5.0 \
+    langchain-text-splitters>=0.0.0 langchain-core>=0.1.0 \
+    pypandoc>=1.12 "markitdown[docx]"
+
+RUN python3.10 -c "import torch, torchaudio, torchcodec; print('torch:', torch.__version__, 'cuda:', torch.version.cuda); print('torchaudio:', torchaudio.__version__); print('torchcodec:', torchcodec.__version__); print('cuda available:', torch.cuda.is_available())"
+
+WORKDIR /app
+COPY backend/ /app/
+
+ENV HF_HOME=/models
+ENV VLLM_URL=http://vllm:11435/v1
+ENV NVIDIA_VISIBLE_DEVICES=all
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001"]

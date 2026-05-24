@@ -5,7 +5,6 @@ Frontend: Gradio UI for AI Transcriber.
 from __future__ import annotations
 
 import os
-import tempfile
 import requests
 
 import gradio as gr
@@ -15,9 +14,10 @@ BACKEND_URL = os.environ.get("BACKEND_URL", "http://127.0.0.1:8001")
 
 # ── API helpers ──────────────────────────────────────────────────────────
 
-def api_transcribe(file_path: str) -> str:
+def api_transcribe(file_path: str) -> tuple[str, str]:
+    """Transcribe audio -> (transcript_text, filename)."""
     if not file_path:
-        return "Файл не выбран."
+        return "Файл не выбран.", ""
     with open(file_path, "rb") as f:
         resp = requests.post(
             f"{BACKEND_URL}/transcribe",
@@ -25,11 +25,12 @@ def api_transcribe(file_path: str) -> str:
             timeout=600,
         )
     if resp.status_code != 200:
-        return f"Ошибка: {resp.text}"
-    return resp.json()["transcript_text"]
+        return f"Ошибка: {resp.text}", ""
+    data = resp.json()
+    return data["transcript_text"], data.get("original_filename", data["filename"])
 
 
-def api_download_docx(transcript: str, template_path: str | None) -> str | None:
+def api_download_docx(transcript: str, template_path: str | None, audio_filename: str) -> str | None:
     if not transcript.strip():
         return None
 
@@ -41,18 +42,26 @@ def api_download_docx(transcript: str, template_path: str | None) -> str | None:
             template_text = md.convert(template_path).text_content
         except Exception:
             pass
+
     resp = requests.post(
         f"{BACKEND_URL}/protocol/download",
-        json={"transcript": transcript, "template_text": template_text},
+        json={
+            "transcript": transcript,
+            "template_text": template_text,
+            "original_filename": audio_filename,
+        },
         timeout=300,
     )
+    print(f"[FRONTEND] download: status={resp.status_code} len={len(resp.content)}")
     if resp.status_code != 200:
+        print(f"[FRONTEND] download error: {resp.text[:200]}")
         return None
 
-    tmp = tempfile.NamedTemporaryFile(suffix=".docx", delete=False)
-    tmp.write(resp.content)
-    tmp.close()
-    return tmp.name
+    tmp_path = "/tmp/report.docx"
+    with open(tmp_path, "wb") as f:
+        f.write(resp.content)
+    print(f"[FRONTEND] saved to: {tmp_path}")
+    return tmp_path
 
 
 # ── Theme ────────────────────────────────────────────────────────────────
@@ -80,6 +89,8 @@ footer { display: none !important; }
 
 with gr.Blocks(title="AI Transcriber") as demo:
     gr.Markdown("## AI Transcriber")
+
+    filename_state = gr.State("")
 
     with gr.Row(equal_height=True):
         with gr.Column(scale=1, min_width=250):
@@ -115,11 +126,11 @@ with gr.Blocks(title="AI Transcriber") as demo:
     audio_button.click(
         fn=api_transcribe,
         inputs=[audio_input],
-        outputs=[audio_answer],
+        outputs=[audio_answer, filename_state],
     )
     protocol_button.click(
         fn=api_download_docx,
-        inputs=[audio_answer, template_input],
+        inputs=[audio_answer, template_input, filename_state],
         outputs=[docx_output],
     )
 
