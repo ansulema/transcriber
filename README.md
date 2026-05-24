@@ -66,13 +66,6 @@ BACKEND_URL=http://127.0.0.1:8001 python run.py
 
 Открыть: **http://localhost:8080**
 
-## Docker
-
-```bash
-cp .env.docker.example .env.docker  # укажи HF_TOKEN
-docker compose --env-file .env.docker up --build
-```
-
 ## API
 
 | Путь | Метод | Описание |
