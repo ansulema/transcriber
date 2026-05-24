@@ -12,7 +12,7 @@ from openai import OpenAI
 
 # ── Конфиг ─────────────────────────────────────────────────────────────
 VLLM_URL = os.environ.get("VLLM_URL", "http://127.0.0.1:11435/v1")
-MODEL = "Qwen/Qwen2.5-7B-Instruct"
+MODEL = "Qwen/Qwen3-4B-Instruct-2507"
 CONTEXT_WINDOW = 8000  # используем 8K из max-model-len
 TOKENIZER = tiktoken.get_encoding("cl100k_base")
 
@@ -34,11 +34,29 @@ def post_process(text: str) -> str:
     return text
 
 
+def strip_timestamps(text: str) -> str:
+    """Remove timestamps from format: 'speaker | MM:SS-MM:SS | text' -> 'speaker: text'."""
+    lines = text.split("\n")
+    result = []
+    for line in lines:
+        # Match: "N | MM:SS-MM:SS | text" -> "Speaker N: text"
+        m = re.match(r"^(\d+)\s*\|\s*\d{2,}:\d{2}-\d{2,}:\d{2}\s*\|\s*(.+)$", line.strip())
+        if m:
+            result.append(f"Speaker {m.group(1)}: {m.group(2)}")
+        else:
+            result.append(line)
+    return "\n".join(result)
+
+
 # ── Промпты ────────────────────────────────────────────────────────────
 
 SYSTEM_MAIN = """Ты — ассистент, который заполняет протоколы совещаний на основе расшифровки.
-Твоя задача — прочитать транскрипт, проанализировать его и заполнить пустой шаблон протокола.
-Отвечай только на русском языке. Не выдумывай информацию, которой нет в транскрипте."""
+Твоя задача — взять ПУСТОЙ ШАБЛОН протокола и заполнить его данными из транскрипта.
+Сохраняй структуру шаблона полностью — заголовки, таблицы, разделы.
+Заменяй пустые места и маркеры на конкретные данные из транскрипта.
+Если каких-то данных в транскрипте нет — пиши 'не указано'.
+Не добавляй ничего от себя. Не меняй формат шаблона.
+Отвечай только на русском языке."""
 
 
 def _call_llm(messages: list[dict], max_tokens: int = 4096) -> str:
@@ -67,7 +85,7 @@ def fill_protocol(transcript: str, template_content: str | None = None) -> str:
     Returns:
         заполненный протокол в markdown
     """
-    cleaned = post_process(transcript)
+    cleaned = post_process(strip_timestamps(transcript))
 
     if not template_content or not template_content.strip():
         # Без шаблона — LLM сама формирует отчёт
@@ -108,11 +126,12 @@ def fill_protocol(transcript: str, template_content: str | None = None) -> str:
         {
             "role": "user",
             "content": (
-                "Прочитай транскрипт совещания и заполни пустой протокол. "
-                "Не выдумывай информацию. Если данных нет — напиши 'не указано'.\n\n"
+                "Возьми ПУСТОЙ ШАБЛОН протокола ниже и заполни его на основе ТРАНСКРИПТА. "
+                "Важно: сохрани СТРУКТУРУ шаблона — все заголовки, таблицы, колонки. "
+                "Только замени пустые поля на данные из транскрипта.\n\n"
                 f"=== ТРАНСКРИПТ ===\n{cleaned}\n\n"
-                f"=== ПУСТОЙ ПРОТОКОЛ ===\n{template_content}\n\n"
-                "Верни ТОЛЬКО заполненный протокол, без лишних комментариев."
+                f"=== ПУСТОЙ ШАБЛОН ===\n{template_content}\n\n"
+                "Верни ТОЛЬКО заполненный шаблон, без комментариев."
             ),
         },
     ]
@@ -144,7 +163,7 @@ def chat_about_transcript(message: str, transcript: str, history: list[dict] | N
         history = []
 
     # Ограничиваем транскрипт если слишком длинный
-    cleaned = post_process(transcript)
+    cleaned = post_process(strip_timestamps(transcript))
     n_tokens = len(TOKENIZER.encode(cleaned))
     if n_tokens > 4000:
         tokens = TOKENIZER.encode(cleaned)

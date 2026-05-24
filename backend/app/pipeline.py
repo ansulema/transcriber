@@ -5,10 +5,9 @@ from app.diarize import diarize
 
 
 def format_ts(seconds: float) -> str:
-    h = int(seconds // 3600)
-    m = int((seconds % 3600) // 60)
-    s = seconds % 60
-    return f"{h:02d}:{m:02d}:{s:06.3f}"
+    m = int(seconds // 60)
+    s = int(seconds % 60)
+    return f"{m:02d}:{s:02d}"
 
 
 def find_speaker(mid_time: float, speaker_segments: list) -> int:
@@ -44,8 +43,7 @@ def run_pipeline(audio_path: str, language: str = "ru") -> dict:
 
     transcript_lines = []
     for u in utterances:
-        transcript_lines.append(f"{u['speaker']}   {u['text']}")
-        transcript_lines.append(f"    {u['start_ts']} - {u['end_ts']}")
+        transcript_lines.append(f"{u['speaker']} | {u['start_ts']}-{u['end_ts']} | {u['text']}")
     transcript_text = "\n".join(transcript_lines)
 
     return {

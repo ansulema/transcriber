@@ -136,13 +136,12 @@ async def fill_protocol_endpoint(req: ProtocolRequest):
 @app.post("/protocol/download")
 async def download_protocol(req: ProtocolRequest):
     """Заполнить протокол и вернуть .docx файл."""
-    template_content = None
-    if req.template_filename:
+    template_content = req.template_text  # prefer inline text
+    if not template_content and req.template_filename:
         tmpl_path = TEMPLATE_DIR / req.template_filename
         if tmpl_path.exists():
             try:
                 from markitdown import MarkItDown
-
                 md = MarkItDown(enable_plugins=False)
                 template_content = md.convert(str(tmpl_path)).text_content
             except Exception:

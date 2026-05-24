@@ -29,6 +29,7 @@ class TranscribeResponse(BaseModel):
 class ProtocolRequest(BaseModel):
     transcript: str
     template_filename: Optional[str] = None
+    template_text: Optional[str] = None
 
 
 class ProtocolResponse(BaseModel):

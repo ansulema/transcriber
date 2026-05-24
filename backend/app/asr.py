@@ -5,7 +5,7 @@ import numpy as np
 import av
 from faster_whisper import WhisperModel
 
-WHISPER_MODEL = "medium"
+WHISPER_MODEL = "large-v3"
 DEVICE = "cuda"
 COMPUTE_TYPE = "float16"
 DOWNLOAD_ROOT = os.path.expanduser("~/.cache/whisper")
