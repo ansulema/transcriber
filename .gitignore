@@ -8,3 +8,4 @@ templates/
 *.mp3
 *.webm
 .env.docker
+backend/whisper-ft/
