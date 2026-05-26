@@ -66,16 +66,7 @@ def api_download_docx(transcript: str, template_path: str | None, audio_filename
 
 # ── Theme ────────────────────────────────────────────────────────────────
 
-theme = gr.themes.Default(
-    primary_hue=gr.themes.utils.colors.cyan,
-    secondary_hue=gr.themes.colors.blue,
-    neutral_hue=gr.themes.colors.cyan,
-    radius_size="lg",
-).set(
-    button_primary_background_fill="#4ad9d9",
-    button_primary_background_fill_hover="#32a1a1",
-    body_background_fill="#f0fdfa",
-)
+theme = gr.Theme.from_hub("harsh8001/skymist")
 
 
 # ── CSS ──────────────────────────────────────────────────────────────────
